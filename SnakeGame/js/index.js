@@ -1,4 +1,3 @@
-// Game Constants & Variables
 let inputDir = { x: 0, y: 0 };
 const foodSound = new Audio('music/food.mp3');
 const gameOverSound = new Audio('music/gameover.mp3');
@@ -20,7 +19,7 @@ function main(ctime) {
     gameEngine();
 }
 
-function isCollide(snake) {
+function isCollide(snake) 
     // If you bump into yourself
     for (let i = 1; i < snakeArr.length; i++) {
         if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) {
@@ -91,8 +90,6 @@ function gameEngine() {
     foodElement.classList.add('food')
     board.appendChild(foodElement);
 }
-
-// Main logic starts here
 window.addEventListener('DOMContentLoaded', (event) => {
     let hiscore = localStorage.getItem("hiscore");
     if (hiscore === null) {
