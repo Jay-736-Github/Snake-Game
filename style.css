@@ -12,6 +12,9 @@ body {
     color: white;
     overflow: hidden;
     height: 100vh;
+    position: fixed;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Top Navigation Bar */
@@ -57,13 +60,20 @@ body {
 
 /* Full Screen Game Container */
 .game-container {
-    position: absolute;
+    position: fixed;
     top: 80px;
     left: 0;
     width: 100vw;
     height: calc(100vh - 80px);
     background: #000;
     overflow: hidden;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 #gameCanvas {
@@ -72,6 +82,8 @@ body {
     display: block;
     background: #000;
     border: none;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Overlay Screens */
@@ -86,6 +98,7 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 100;
+    touch-action: none;
 }
 
 .overlay-content {
@@ -123,6 +136,7 @@ body {
     text-transform: uppercase;
     box-shadow: 0 8px 25px rgba(0, 255, 127, 0.4);
     letter-spacing: 1px;
+    touch-action: manipulation;
 }
 
 .game-btn:hover {
@@ -193,65 +207,178 @@ body {
     animation: scoreGlow 0.5s ease;
 }
 
-/* Mobile Responsive */
+/* Mobile Responsive - IMPROVED */
 @media (max-width: 768px) {
+    body {
+        position: fixed;
+        overflow: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+    
     .navbar {
-        height: 70px;
-        padding: 0 15px;
+        height: 60px;
+        padding: 0 10px;
     }
     
     .game-title {
-        font-size: 1.6em;
-    }
-    
-    .game-stats {
-        gap: 10px;
-    }
-    
-    #scoreBox, #levelBox, #hiscoreBox {
-        font-size: 0.9em;
-        padding: 6px 12px;
-        min-width: 70px;
-    }
-    
-    .game-container {
-        top: 70px;
-        height: calc(100vh - 70px);
-    }
-    
-    .overlay-content h2 {
-        font-size: 2.5em;
-    }
-    
-    .controls-text {
-        font-size: 1.1em;
-    }
-    
-    .game-btn {
-        padding: 15px 35px;
-        font-size: 1.2em;
-    }
-    
-    .death-message p {
         font-size: 1.3em;
     }
     
-    .final-stats {
-        font-size: 1.4em;
-    }
-}
-
-@media (max-height: 600px) {
-    .navbar {
-        height: 60px;
+    .game-stats {
+        gap: 8px;
+        flex-wrap: wrap;
     }
     
-    .game-title {
-        font-size: 1.4em;
+    #scoreBox, #levelBox, #hiscoreBox {
+        font-size: 0.8em;
+        padding: 4px 8px;
+        min-width: 60px;
     }
     
     .game-container {
         top: 60px;
         height: calc(100vh - 60px);
+        position: fixed;
+        touch-action: none;
+    }
+    
+    #gameCanvas {
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .overlay-content {
+        padding: 20px;
+    }
+    
+    .overlay-content h2 {
+        font-size: 2em;
+        margin-bottom: 20px;
+    }
+    
+    .controls-text {
+        font-size: 1em;
+        margin-bottom: 30px;
+    }
+    
+    .game-btn {
+        padding: 12px 30px;
+        font-size: 1.1em;
+        touch-action: manipulation;
+    }
+    
+    .death-message .emoji {
+        font-size: 3em;
+    }
+    
+    .death-message p {
+        font-size: 1.1em;
+    }
+    
+    .final-stats {
+        font-size: 1.2em;
+    }
+}
+
+/* Very Small Mobile Screens */
+@media (max-width: 480px) {
+    .navbar {
+        height: 50px;
+        padding: 0 8px;
+    }
+    
+    .game-title {
+        font-size: 1.1em;
+    }
+    
+    .game-stats {
+        gap: 5px;
+    }
+    
+    #scoreBox, #levelBox, #hiscoreBox {
+        font-size: 0.7em;
+        padding: 3px 6px;
+        min-width: 50px;
+    }
+    
+    .game-container {
+        top: 50px;
+        height: calc(100vh - 50px);
+    }
+    
+    .overlay-content h2 {
+        font-size: 1.6em;
+    }
+    
+    .controls-text {
+        font-size: 0.9em;
+    }
+    
+    .game-btn {
+        padding: 10px 25px;
+        font-size: 1em;
+    }
+}
+
+/* Landscape mode on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .navbar {
+        height: 40px;
+        padding: 0 10px;
+    }
+    
+    .game-title {
+        font-size: 1em;
+    }
+    
+    #scoreBox, #levelBox, #hiscoreBox {
+        font-size: 0.7em;
+        padding: 2px 6px;
+    }
+    
+    .game-container {
+        top: 40px;
+        height: calc(100vh - 40px);
+    }
+    
+    .overlay-content {
+        padding: 10px;
+    }
+    
+    .overlay-content h2 {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+    }
+    
+    .controls-text {
+        font-size: 0.8em;
+        margin-bottom: 15px;
+    }
+    
+    .game-btn {
+        padding: 8px 20px;
+        font-size: 0.9em;
+    }
+    
+    .death-message .emoji {
+        font-size: 2em;
+        margin-bottom: 10px;
+    }
+    
+    .death-message p {
+        font-size: 1em;
+    }
+    
+    .final-stats {
+        font-size: 1em;
+        margin-bottom: 15px;
+    }
+}
+
+/* Prevent zoom on double tap */
+@media (pointer: coarse) {
+    * {
+        touch-action: manipulation;
     }
 }

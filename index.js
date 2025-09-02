@@ -19,7 +19,7 @@ class SnakeGame {
     this.moveSound = new Audio("music/move.mp3");
 
     // Game settings - FASTER SPEED as requested
-    this.gridSize = 20;
+    this.gridSize = this.isMobile() ? 15 : 20; // Smaller grid on mobile
     this.initialSpeed = 10; // Much faster initial speed (like your original)
     this.speed = this.initialSpeed;
 
@@ -34,9 +34,11 @@ class SnakeGame {
     this.gameLoop = null;
     this.lastPaintTime = 0;
 
-    // Touch controls
+    // Touch controls - IMPROVED
     this.touchStartX = 0;
     this.touchStartY = 0;
+    this.touchStartTime = 0;
+    this.minSwipeDistance = this.isMobile() ? 30 : 50;
 
     // Roast messages
     this.roastMessages = [
@@ -60,27 +62,77 @@ class SnakeGame {
     this.init();
   }
 
+  // Detect mobile device
+  isMobile() {
+    return (
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 2)
+    );
+  }
+
   init() {
     this.setupCanvas();
     this.setupEventListeners();
     this.loadHighScore();
     this.resetGame();
+
+    // Prevent scrolling on mobile
+    document.body.addEventListener(
+      "touchmove",
+      function (e) {
+        e.preventDefault();
+      },
+      { passive: false }
+    );
+
+    // Prevent context menu on mobile
+    document.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+    });
   }
 
   setupCanvas() {
     const resizeCanvas = () => {
-      const rect = this.canvas.getBoundingClientRect();
-      this.canvas.width = rect.width;
-      this.canvas.height = rect.height;
+      // Get actual viewport size
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Account for navbar height
+      const navbarHeight = this.isMobile()
+        ? viewportHeight < 500
+          ? 40
+          : viewportWidth < 480
+          ? 50
+          : 60
+        : 80;
+
+      const availableHeight = viewportHeight - navbarHeight;
+
+      // Set canvas size to fill container
+      this.canvas.width = viewportWidth;
+      this.canvas.height = availableHeight;
+
       // Calculate grid dimensions
       this.cols = Math.floor(this.canvas.width / this.gridSize);
       this.rows = Math.floor(this.canvas.height / this.gridSize);
+
       // Center the grid
       this.offsetX = (this.canvas.width - this.cols * this.gridSize) / 2;
       this.offsetY = (this.canvas.height - this.rows * this.gridSize) / 2;
     };
+
     resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
+
+    // Handle orientation change on mobile
+    window.addEventListener("resize", () => {
+      setTimeout(resizeCanvas, 100);
+    });
+
+    window.addEventListener("orientationchange", () => {
+      setTimeout(resizeCanvas, 300);
+    });
   }
 
   setupEventListeners() {
@@ -126,50 +178,17 @@ class SnakeGame {
       e.preventDefault();
     });
 
-    // Touch controls
+    // IMPROVED Touch controls for mobile
     this.canvas.addEventListener(
       "touchstart",
       (e) => {
         e.preventDefault();
+        e.stopPropagation();
+
         const touch = e.touches[0];
         this.touchStartX = touch.clientX;
         this.touchStartY = touch.clientY;
-      },
-      { passive: false }
-    );
-
-    this.canvas.addEventListener(
-      "touchend",
-      (e) => {
-        e.preventDefault();
-        if (!this.gameRunning) return;
-
-        const touch = e.changedTouches[0];
-        const deltaX = touch.clientX - this.touchStartX;
-        const deltaY = touch.clientY - this.touchStartY;
-        const minSwipeDistance = 50;
-
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-          if (Math.abs(deltaX) > minSwipeDistance) {
-            if (deltaX > 0 && this.direction.x !== -1) {
-              this.nextDirection = { x: 1, y: 0 };
-              this.moveSound.play();
-            } else if (deltaX < 0 && this.direction.x !== 1) {
-              this.nextDirection = { x: -1, y: 0 };
-              this.moveSound.play();
-            }
-          }
-        } else {
-          if (Math.abs(deltaY) > minSwipeDistance) {
-            if (deltaY > 0 && this.direction.y !== -1) {
-              this.nextDirection = { x: 0, y: 1 };
-              this.moveSound.play();
-            } else if (deltaY < 0 && this.direction.y !== 1) {
-              this.nextDirection = { x: 0, y: -1 };
-              this.moveSound.play();
-            }
-          }
-        }
+        this.touchStartTime = Date.now();
       },
       { passive: false }
     );
@@ -178,6 +197,53 @@ class SnakeGame {
       "touchmove",
       (e) => {
         e.preventDefault();
+        e.stopPropagation();
+      },
+      { passive: false }
+    );
+
+    this.canvas.addEventListener(
+      "touchend",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!this.gameRunning) return;
+
+        const touch = e.changedTouches[0];
+        const deltaX = touch.clientX - this.touchStartX;
+        const deltaY = touch.clientY - this.touchStartY;
+        const deltaTime = Date.now() - this.touchStartTime;
+
+        // Ignore very quick taps or long holds
+        if (deltaTime < 50 || deltaTime > 500) return;
+
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+
+        // Check if swipe is long enough
+        if (Math.max(absX, absY) < this.minSwipeDistance) return;
+
+        // Determine swipe direction
+        if (absX > absY) {
+          // Horizontal swipe
+          if (deltaX > 0 && this.direction.x !== -1) {
+            this.nextDirection = { x: 1, y: 0 };
+            this.moveSound.play();
+          } else if (deltaX < 0 && this.direction.x !== 1) {
+            this.nextDirection = { x: -1, y: 0 };
+            this.moveSound.play();
+          }
+        } else {
+          // Vertical swipe
+          if (deltaY > 0 && this.direction.y !== -1) {
+            this.nextDirection = { x: 0, y: 1 };
+            this.moveSound.play();
+          } else if (deltaY < 0 && this.direction.y !== 1) {
+            this.nextDirection = { x: 0, y: -1 };
+            this.moveSound.play();
+          }
+        }
       },
       { passive: false }
     );
@@ -298,8 +364,8 @@ class SnakeGame {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Draw grid lines (subtle)
-    this.ctx.strokeStyle = "rgba(0, 255, 127, 0.1)";
-    this.ctx.lineWidth = 1;
+    this.ctx.strokeStyle = "rgba(0, 255, 127, 0.05)"; // Even more subtle on mobile
+    this.ctx.lineWidth = 0.5;
 
     for (let i = 0; i <= this.cols; i++) {
       this.ctx.beginPath();
@@ -329,24 +395,35 @@ class SnakeGame {
       if (index === 0) {
         // Snake head
         this.ctx.fillStyle = "#00ff7f";
-        this.ctx.fillRect(x + 2, y + 2, this.gridSize - 4, this.gridSize - 4);
+        this.ctx.fillRect(x + 1, y + 1, this.gridSize - 2, this.gridSize - 2);
 
         // Add glow effect
         this.ctx.shadowColor = "#00ff7f";
-        this.ctx.shadowBlur = 15;
-        this.ctx.fillRect(x + 2, y + 2, this.gridSize - 4, this.gridSize - 4);
+        this.ctx.shadowBlur = 10;
+        this.ctx.fillRect(x + 1, y + 1, this.gridSize - 2, this.gridSize - 2);
         this.ctx.shadowBlur = 0;
 
-        // Add eyes
+        // Add eyes (smaller on mobile)
         this.ctx.fillStyle = "#000";
-        const eyeSize = 3;
-        this.ctx.fillRect(x + 6, y + 6, eyeSize, eyeSize);
-        this.ctx.fillRect(x + this.gridSize - 9, y + 6, eyeSize, eyeSize);
+        const eyeSize = this.isMobile() ? 2 : 3;
+        const eyeOffset = this.isMobile() ? 3 : 6;
+        this.ctx.fillRect(x + eyeOffset, y + eyeOffset, eyeSize, eyeSize);
+        this.ctx.fillRect(
+          x + this.gridSize - eyeOffset - eyeSize,
+          y + eyeOffset,
+          eyeSize,
+          eyeSize
+        );
       } else {
         // Snake body
         const opacity = Math.max(0.4, 1 - index * 0.05);
         this.ctx.fillStyle = `rgba(0, 191, 255, ${opacity})`;
-        this.ctx.fillRect(x + 1, y + 1, this.gridSize - 2, this.gridSize - 2);
+        this.ctx.fillRect(
+          x + 0.5,
+          y + 0.5,
+          this.gridSize - 1,
+          this.gridSize - 1
+        );
       }
     });
 
@@ -356,18 +433,19 @@ class SnakeGame {
 
     this.ctx.fillStyle = "#ff4757";
     this.ctx.shadowColor = "#ff4757";
-    this.ctx.shadowBlur = 20;
+    this.ctx.shadowBlur = 15;
     this.ctx.fillRect(
-      foodX + 3,
-      foodY + 3,
-      this.gridSize - 6,
-      this.gridSize - 6
+      foodX + 2,
+      foodY + 2,
+      this.gridSize - 4,
+      this.gridSize - 4
     );
     this.ctx.shadowBlur = 0;
 
     // Add sparkle effect
     this.ctx.fillStyle = "#fff";
-    this.ctx.fillRect(foodX + 5, foodY + 5, 3, 3);
+    const sparkleSize = this.isMobile() ? 2 : 3;
+    this.ctx.fillRect(foodX + 4, foodY + 4, sparkleSize, sparkleSize);
   }
 
   generateFood() {
@@ -421,3 +499,4 @@ class SnakeGame {
 document.addEventListener("DOMContentLoaded", () => {
   new SnakeGame();
 });
+ 
