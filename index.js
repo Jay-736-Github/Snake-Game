@@ -114,24 +114,46 @@ class SnakeGame {
       this.canvas.width = viewportWidth;
       this.canvas.height = availableHeight;
 
-      // Calculate grid dimensions
+      // Calculate grid dimensions - FIXED for mobile
       this.cols = Math.floor(this.canvas.width / this.gridSize);
       this.rows = Math.floor(this.canvas.height / this.gridSize);
+
+      // Ensure minimum grid size for mobile
+      if (this.isMobile()) {
+        this.cols = Math.max(10, this.cols); // Minimum 10 columns
+        this.rows = Math.max(15, this.rows); // Minimum 15 rows
+      }
 
       // Center the grid
       this.offsetX = (this.canvas.width - this.cols * this.gridSize) / 2;
       this.offsetY = (this.canvas.height - this.rows * this.gridSize) / 2;
+
+      console.log(
+        `Grid: ${this.cols}x${this.rows}, Canvas: ${this.canvas.width}x${this.canvas.height}`
+      );
     };
 
     resizeCanvas();
 
     // Handle orientation change on mobile
     window.addEventListener("resize", () => {
-      setTimeout(resizeCanvas, 100);
+      setTimeout(() => {
+        resizeCanvas();
+        // Regenerate food if it's outside new boundaries
+        if (this.food.x >= this.cols || this.food.y >= this.rows) {
+          this.generateFood();
+        }
+      }, 100);
     });
 
     window.addEventListener("orientationchange", () => {
-      setTimeout(resizeCanvas, 300);
+      setTimeout(() => {
+        resizeCanvas();
+        // Regenerate food if it's outside new boundaries
+        if (this.food.x >= this.cols || this.food.y >= this.rows) {
+          this.generateFood();
+        }
+      }, 300);
     });
   }
 
@@ -255,24 +277,42 @@ class SnakeGame {
     this.resetGame();
     this.gameRunning = true;
     this.runGame(0);
+
+    // 🔹 GA4 Event: Game Started
+    if (typeof gtag === "function") {
+      gtag("event", "start_game", {
+        event_category: "engagement",
+        event_label: "Game Started",
+        value: 1,
+      });
+    }
   }
 
   resetGame() {
+    // Ensure canvas is properly sized before creating snake
+    if (this.cols <= 0 || this.rows <= 0) {
+      // Trigger canvas resize
+      setTimeout(() => {
+        this.resetGame();
+      }, 100);
+      return;
+    }
+
     // Reset snake to center
     const centerX = Math.floor(this.cols / 2);
     const centerY = Math.floor(this.rows / 2);
 
     this.snake = [
       { x: centerX, y: centerY },
-      { x: centerX - 1, y: centerY },
-      { x: centerX - 2, y: centerY },
+      { x: Math.max(0, centerX - 1), y: centerY },
+      { x: Math.max(0, centerX - 2), y: centerY },
     ];
 
     this.direction = { x: 1, y: 0 };
     this.nextDirection = { x: 1, y: 0 };
-    this.score = 0; // Start from 0
+    this.score = 0;
     this.level = 1;
-    this.speed = this.initialSpeed; // Reset to initial fast speed
+    this.speed = this.initialSpeed;
     this.lastPaintTime = 0;
 
     this.generateFood();
@@ -295,15 +335,12 @@ class SnakeGame {
   }
 
   update() {
-    // Update direction
     this.direction = { ...this.nextDirection };
-
-    // Move snake
     const head = { ...this.snake[0] };
     head.x += this.direction.x;
     head.y += this.direction.y;
 
-    // Check wall collision
+    // Wall collision
     if (
       head.x < 0 ||
       head.x >= this.cols ||
@@ -314,7 +351,7 @@ class SnakeGame {
       return;
     }
 
-    // Check self collision
+    // Self collision
     for (let segment of this.snake) {
       if (head.x === segment.x && head.y === segment.y) {
         this.gameOver();
@@ -324,17 +361,22 @@ class SnakeGame {
 
     this.snake.unshift(head);
 
-    // Check food collision
+    // Food collision
     if (head.x === this.food.x && head.y === this.food.y) {
-      // Play food sound
       this.foodSound.play();
-
-      // Increase score by 1 (as requested)
       this.score += 1;
 
-      // Speed increase logic: Every 10 points, speed increases by 0.5x
+      // 🔹 GA4 Event: Food Eaten
+      if (typeof gtag === "function") {
+        gtag("event", "food_eaten", {
+          event_category: "gameplay",
+          event_label: "Food",
+          value: this.score,
+        });
+      }
+
       if (this.score % 10 === 0) {
-        this.speed = this.speed * 1.5; // 0.5x faster (1.5x the speed)
+        this.speed = this.speed * 1.5;
         this.level = Math.floor(this.score / 10) + 1;
 
         this.levelElement.classList.add("score-animate");
@@ -346,8 +388,6 @@ class SnakeGame {
 
       this.generateFood();
       this.updateUI();
-
-      // Animate score
       this.scoreElement.classList.add("score-animate");
       setTimeout(
         () => this.scoreElement.classList.remove("score-animate"),
@@ -364,7 +404,7 @@ class SnakeGame {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Draw grid lines (subtle)
-    this.ctx.strokeStyle = "rgba(0, 255, 127, 0.05)"; // Even more subtle on mobile
+    this.ctx.strokeStyle = "rgba(0, 255, 127, 0.05)";
     this.ctx.lineWidth = 0.5;
 
     for (let i = 0; i <= this.cols; i++) {
@@ -427,61 +467,125 @@ class SnakeGame {
       }
     });
 
-    // Draw food
-    const foodX = this.offsetX + this.food.x * this.gridSize;
-    const foodY = this.offsetY + this.food.y * this.gridSize;
+    // Draw food - IMPROVED with bounds checking
+    if (
+      this.food.x >= 0 &&
+      this.food.x < this.cols &&
+      this.food.y >= 0 &&
+      this.food.y < this.rows
+    ) {
+      const foodX = this.offsetX + this.food.x * this.gridSize;
+      const foodY = this.offsetY + this.food.y * this.gridSize;
 
-    this.ctx.fillStyle = "#ff4757";
-    this.ctx.shadowColor = "#ff4757";
-    this.ctx.shadowBlur = 15;
-    this.ctx.fillRect(
-      foodX + 2,
-      foodY + 2,
-      this.gridSize - 4,
-      this.gridSize - 4
-    );
-    this.ctx.shadowBlur = 0;
+      // Make food more visible on mobile
+      const foodSize = this.isMobile() ? this.gridSize - 2 : this.gridSize - 4;
+      const foodOffset = this.isMobile() ? 1 : 2;
 
-    // Add sparkle effect
-    this.ctx.fillStyle = "#fff";
-    const sparkleSize = this.isMobile() ? 2 : 3;
-    this.ctx.fillRect(foodX + 4, foodY + 4, sparkleSize, sparkleSize);
+      this.ctx.fillStyle = "#ff4757";
+      this.ctx.shadowColor = "#ff4757";
+      this.ctx.shadowBlur = 15;
+      this.ctx.fillRect(
+        foodX + foodOffset,
+        foodY + foodOffset,
+        foodSize,
+        foodSize
+      );
+      this.ctx.shadowBlur = 0;
+
+      // Add sparkle effect - more visible on mobile
+      this.ctx.fillStyle = "#fff";
+      const sparkleSize = this.isMobile() ? 3 : 3;
+      const sparkleOffset = this.isMobile() ? 3 : 4;
+      this.ctx.fillRect(
+        foodX + sparkleOffset,
+        foodY + sparkleOffset,
+        sparkleSize,
+        sparkleSize
+      );
+    } else {
+      // If food is out of bounds, regenerate it
+      console.warn("Food out of bounds, regenerating...");
+      this.generateFood();
+    }
   }
 
   generateFood() {
+    // Ensure we have valid grid dimensions
+    if (this.cols <= 0 || this.rows <= 0) {
+      console.warn("Invalid grid dimensions:", this.cols, this.rows);
+      return;
+    }
+
+    // Add safety margins for mobile
+    const marginX = this.isMobile() ? 1 : 0;
+    const marginY = this.isMobile() ? 1 : 0;
+
+    const maxX = Math.max(1, this.cols - marginX - 1);
+    const maxY = Math.max(1, this.rows - marginY - 1);
+    const minX = marginX;
+    const minY = marginY;
+
+    let attempts = 0;
+    const maxAttempts = 100;
+
     do {
       this.food = {
-        x: Math.floor(Math.random() * this.cols),
-        y: Math.floor(Math.random() * this.rows),
+        x: Math.floor(Math.random() * (maxX - minX + 1)) + minX,
+        y: Math.floor(Math.random() * (maxY - minY + 1)) + minY,
       };
+      attempts++;
+
+      // Safety check to prevent infinite loop
+      if (attempts > maxAttempts) {
+        console.warn("Could not generate food after", maxAttempts, "attempts");
+        // Place food in a safe default position
+        this.food = {
+          x: Math.floor(this.cols / 2),
+          y: Math.floor(this.rows / 2),
+        };
+        break;
+      }
     } while (
       this.snake.some(
         (segment) => segment.x === this.food.x && segment.y === this.food.y
-      )
+      ) ||
+      this.food.x < 0 ||
+      this.food.x >= this.cols ||
+      this.food.y < 0 ||
+      this.food.y >= this.rows
+    );
+
+    console.log(
+      `Food generated at: (${this.food.x}, ${this.food.y}), Grid: ${this.cols}x${this.rows}`
     );
   }
 
   gameOver() {
     this.gameRunning = false;
-
-    // Play game over sound
     this.gameOverSound.play();
 
-    // Update high score
     const highScore = parseInt(localStorage.getItem("snakeHighScore")) || 0;
     if (this.score > highScore) {
       localStorage.setItem("snakeHighScore", this.score);
       this.loadHighScore();
     }
 
-    // Show death message
     const randomRoast =
       this.roastMessages[Math.floor(Math.random() * this.roastMessages.length)];
     this.roastElement.textContent = randomRoast;
     this.finalScoreElement.textContent = this.score;
     this.finalLevelElement.textContent = this.level;
-
     this.gameOverScreen.classList.remove("hidden");
+
+    // 🔹 GA4 Event: Game Over
+    if (typeof gtag === "function") {
+      gtag("event", "game_over", {
+        event_category: "engagement",
+        event_label: "Game Over",
+        score: this.score,
+        level: this.level,
+      });
+    }
   }
 
   updateUI() {
@@ -499,4 +603,3 @@ class SnakeGame {
 document.addEventListener("DOMContentLoaded", () => {
   new SnakeGame();
 });
- 
