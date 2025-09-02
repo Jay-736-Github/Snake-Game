@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game - Challenge Yourself!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <div class="navbar">
+        <div class="game-title">🐍 SNAKE MASTER</div>
+        <div class="game-stats">
+            <div id="scoreBox">Score: <span id="score">0</span></div>
+            <div id="levelBox">Level: <span id="level">1</span></div>
+            <div id="hiscoreBox">Best: <span id="hiscore">0</span></div>
+        </div>
+    </div>
+
+    <!-- Full Screen Game Area -->
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Start Screen Overlay -->
+        <div id="startScreen" class="overlay">
+            <div class="overlay-content">
+                <h2>🐍 Ready to Play?</h2>
+                <p class="controls-text">
+                    <strong>Desktop:</strong> Arrow Keys | <strong>Mobile:</strong> Swipe
+                </p>
+                <button id="startBtn" class="game-btn">START GAME</button>
+            </div>
+        </div>
+        
+        <!-- Game Over Overlay -->
+        <div id="gameOverScreen" class="overlay hidden">
+            <div class="overlay-content">
+                <div class="death-message">
+                    <span class="emoji">😂</span>
+                    <p id="roastMessage"></p>
+                </div>
+                <div class="final-stats">
+                    <div>Final Score: <span id="finalScore">0</span></div>
+                    <div>Level Reached: <span id="finalLevel">1</span></div>
+                </div>
+                <button id="restartBtn" class="game-btn">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+</html>
